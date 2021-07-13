@@ -1,0 +1,5 @@
+{1 Js_of_ocaml Bingings for WebRTC Web API}
+
+This library provides bindings to the WebRTC Web API
+
+ - {! Rtc.PeerConnection} contains the code for working with RTC peer connections 

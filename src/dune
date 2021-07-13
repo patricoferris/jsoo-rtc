@@ -1,0 +1,7 @@
+(library
+ (name rtc)
+ (public_name jsoo-rtc)
+ (libraries js_of_ocaml brr))
+
+(documentation
+ (package jsoo-rtc))
