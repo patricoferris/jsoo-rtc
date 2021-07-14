@@ -1,3 +1,4 @@
+open Brr
 (** {!Jsoo WebRTC}
 
     OCaml bindings to the browser's WebRTC interface. *)
@@ -182,6 +183,58 @@ module SctpTransport : sig
       transmission and receipt of the packets *)
 end
 
+(** {2 Data Channels}
+
+    The data channels allows us to represent a network channel which can be used
+    for bidirectional peer-to-peer transfer of data. *)
+
+module DataChannel : sig
+  type t
+  (** A certificate used by the connection for authentication *)
+
+  include Jv.CONV with type t := t
+
+  type opts
+
+  val opts :
+    ?ordered:bool ->
+    ?max_packet_life_time:int ->
+    ?max_retransmits:int ->
+    ?protocol:Jstr.t ->
+    ?negotiated:bool ->
+    ?id:int ->
+    unit ->
+    opts
+
+  module State : sig
+    type t = Connecting | Open | Closing | Closed
+
+    val to_string : t -> string
+
+    val of_string : string -> t
+  end
+
+  val get_ready_state : t -> State.t
+
+  module Ev : sig
+    val set_on_open : (Ev.void Ev.t -> 'a) -> t -> unit
+
+    val set_on_message : (Brr_io.Message.Ev.t Ev.t -> 'a) -> t -> unit
+
+    val set_on_close : (Ev.void Ev.t -> 'a) -> t -> unit
+  end
+
+  val send : Jstr.t -> t -> unit
+
+  val send_blob : Blob.t -> t -> unit
+
+  val send_array : Tarray.Buffer.t -> t -> unit
+
+  val close : t -> unit
+end
+
+(** {2 Peer Connections}*)
+
 module PeerConnection : sig
   module Bundle : sig
     (** The bundle policy is part of the RTCConfiguration for peer connections.
@@ -360,6 +413,9 @@ module PeerConnection : sig
       which SCTP data is being sent and received. It will be [None] if it has
       not been negotiated *)
 
+  val get_ready_state : t -> DataChannel.State.t
+  (** [get_ready_state]*)
+
   module SignalingState : sig
     type t =
       | Stable
@@ -386,7 +442,29 @@ module PeerConnection : sig
   (** {2:events Events} *)
 
   module Ev : sig
-    (* TODO... *)
+    (** {3 Handlers}*)
+
+    val set_on_open : (Ev.void Ev.t -> 'a) -> t -> unit
+
+    val set_on_message : (Brr_io.Message.Ev.t Ev.t -> 'a) -> t -> unit
+
+    val set_on_close : (Ev.void Ev.t -> 'a) -> t -> unit
+
+    module Ice : sig
+      type t
+
+      val candidate : t -> IceCandidate.t
+    end
+
+    val set_on_ice_candidate : (Ice.t Ev.t -> 'a) -> t -> unit
+
+    module DataChannel : sig
+      type t
+
+      val channel : t -> DataChannel.t
+    end
+
+    val set_on_data_channel : (DataChannel.t Ev.t -> 'a) -> t -> unit
   end
 
   (** {2:methods Methods}
@@ -422,6 +500,13 @@ module PeerConnection : sig
 
   val create_offer : ?offer:offer -> t -> Sd.t Fut.or_error
   (** Initiate the creation of an SDP offer *)
+
+  val create_answer : ?answer:offer -> t -> Sd.t Fut.or_error
+  (** Creates an SDP answer to an offer received from a remote peer during the
+      offer/answer negotiation *)
+
+  val create_data_channel :
+    ?opts:DataChannel.opts -> label:string -> t -> DataChannel.t
 
   val generate_certificate :
     Brr_webcrypto.Crypto_algo.t -> Certificate.t Fut.or_error
