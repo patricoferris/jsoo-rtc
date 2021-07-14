@@ -180,6 +180,61 @@ module SctpTransport = struct
   let get_transport t = Jv.get t "transport" |> DtlsTransport.of_jv
 end
 
+module DataChannel = struct
+  type t = Jv.t
+
+  include (Jv.Id : Jv.CONV with type t := t)
+
+  type opts = Jv.t
+
+  let opts ?ordered ?max_packet_life_time ?max_retransmits ?protocol ?negotiated
+      ?id () =
+    let o = Jv.obj [||] in
+    Jv.Bool.set_if_some o "ordered" ordered;
+    Jv.Int.set_if_some o "maxPacketLifeTime" max_packet_life_time;
+    Jv.Int.set_if_some o "maxRetransmits" max_retransmits;
+    Jv.Jstr.set_if_some o "protocol" protocol;
+    Jv.Bool.set_if_some o "negotiated" negotiated;
+    Jv.Int.set_if_some o "id" id;
+    o
+
+  module State = struct
+    type t = Connecting | Open | Closing | Closed
+
+    let to_string = function
+      | Connecting -> "connecting"
+      | Open -> "open"
+      | Closing -> "closing"
+      | Closed -> "closed"
+
+    let of_string = function
+      | "connecting" -> Connecting
+      | "open" -> Open
+      | "closing" -> Closing
+      | "closed" -> Closed
+      | _ -> raise (Invalid_argument "Unknown data channel state")
+  end
+
+  let get_ready_state t =
+    Jv.get t "readyState" |> Jv.to_string |> State.of_string
+
+  module Ev = struct
+    let set_on_open f t = Jv.set t "onopen" (Jv.repr f)
+
+    let set_on_message f t = Jv.set t "onmessage" (Jv.repr f)
+
+    let set_on_close f t = Jv.set t "onclose" (Jv.repr f)
+  end
+
+  let send s t = Jv.call t "send" [| Jv.of_jstr s |] |> ignore
+
+  let send_blob s t = Jv.call t "send" [| Blob.to_jv s |] |> ignore
+
+  let send_array s t = Jv.call t "send" [| Tarray.Buffer.to_jv s |] |> ignore
+
+  let close t = Jv.call t "close" [||] |> ignore
+end
+
 module PeerConnection = struct
   module Bundle = struct
     type t = [ `MaxBundle | `MaxCompat | `Balanced ]
@@ -240,7 +295,7 @@ module PeerConnection = struct
   include (Jv.Id : Jv.CONV with type t := t)
 
   let create ?(opts = Jv.undefined) () =
-    Jv.new' (Jv.get Jv.global "PeerConnection") [| opts |]
+    Jv.new' (Jv.get Jv.global "RTCPeerConnection") [| opts |]
 
   let can_trickle_ice_candidates t =
     Jv.get t "canTrickleIceCandidates" |> Jv.to_bool
@@ -398,14 +453,34 @@ module PeerConnection = struct
   (** {2:events Events} *)
 
   module Ev = struct
-    (* TODO... *)
+    let set_on_open f t = Jv.set t "onopen" (Jv.repr f)
+
+    let set_on_message f t = Jv.set t "onmessage" (Jv.repr f)
+
+    let set_on_close f t = Jv.set t "onclose" (Jv.repr f)
+
+    module Ice = struct
+      type t = Jv.t
+
+      let candidate t = Jv.get t "candidate" |> IceCandidate.of_jv
+    end
+
+    let set_on_ice_candidate f t = Jv.set t "onicecandidate" (Jv.repr f)
+
+    module DataChannel = struct
+      type t = Jv.t
+
+      let channel t = Jv.get t "channel" |> DataChannel.of_jv
+    end
+
+    let set_on_data_channel f t = Jv.set t "ondatachannel" (Jv.repr f)
   end
 
   let add_ice_candidate ?candidate ~connection () =
     let candidate =
       Jv.of_option ~none:Jv.undefined IceCandidate.of_jv candidate
     in
-    Jv.call connection "addIceConnection" [| candidate |]
+    Jv.call connection "addIceCandidate" [| candidate |]
     |> Fut.of_promise ~ok:(fun _ -> ())
 
   let add_track ?stream ~track ~connection () =
@@ -426,6 +501,18 @@ module PeerConnection = struct
   let create_offer ?offer t =
     let offer = Jv.of_option ~none:Jv.undefined Jv.Id.of_jv offer in
     Jv.call t "createOffer" [| offer |] |> Fut.of_promise ~ok:Sd.of_jv
+
+  let create_answer ?answer t =
+    let offer = Jv.of_option ~none:Jv.undefined Jv.Id.of_jv answer in
+    Jv.call t "createAnswer" [| offer |] |> Fut.of_promise ~ok:Sd.of_jv
+
+  let create_data_channel ?opts ~label t =
+    let opts = Jv.of_option ~none:Jv.undefined Jv.Id.to_jv opts in
+    Jv.call t "createDataChannel" [| Jv.of_string label; opts |]
+    |> DataChannel.of_jv
+
+  let get_ready_state t =
+    Jv.get t "readyState" |> Jv.to_string |> DataChannel.State.of_string
 
   let generate_certificate algo =
     let cert = Brr_webcrypto.Crypto_algo.to_jv algo in
