@@ -94,7 +94,7 @@ module RtpSender = struct
 
   let get_dtmf t = Jv.find t "dtmf"
 
-  let get_track t = Option.map Media.StreamTrack.of_jv @@ Jv.find t "track"
+  let get_track t = Option.map Brr_io.Media.Track.of_jv @@ Jv.find t "track"
 
   let get_transport t = Option.map DtlsTransport.of_jv @@ Jv.find t "transport"
 end
@@ -465,7 +465,24 @@ module PeerConnection = struct
       let candidate t = Jv.get t "candidate" |> IceCandidate.of_jv
     end
 
+    let icecandidate : Ice.t Ev.type' = Ev.Type.create (Jstr.v "icecandidate")
+
     let set_on_ice_candidate f t = Jv.set t "onicecandidate" (Jv.repr f)
+
+    module Track = struct
+      type t = Jv.t
+
+      let receiver t = Jv.get t "receiver" |> RtpReceiver.of_jv
+
+      let streams t =
+        Jv.get t "streams" |> Jv.to_array Brr_io.Media.Stream.of_jv
+
+      let track t = Jv.get t "track" |> Brr_io.Media.Track.of_jv
+
+      let transceiver t = Jv.get t "transceiver" |> RtpTransceiver.of_jv
+    end
+
+    let track : Ice.t Ev.type' = Ev.Type.create (Jstr.v "track")
 
     module DataChannel = struct
       type t = Jv.t
@@ -477,18 +494,18 @@ module PeerConnection = struct
   end
 
   let add_ice_candidate ?candidate ~connection () =
-    let candidate =
-      Jv.of_option ~none:Jv.undefined IceCandidate.of_jv candidate
-    in
+    let candidate = Jv.of_option ~none:Jv.null IceCandidate.of_jv candidate in
     Jv.call connection "addIceCandidate" [| candidate |]
     |> Fut.of_promise ~ok:(fun _ -> ())
 
   let add_track ?stream ~track ~connection () =
-    let stream = Jv.of_option ~none:Jv.undefined Media.Stream.to_jv stream in
-    Jv.call connection "addTrack" [| Media.StreamTrack.to_jv track; stream |]
+    let stream =
+      Jv.of_option ~none:Jv.undefined Brr_io.Media.Stream.to_jv stream
+    in
+    Jv.call connection "addTrack" [| Brr_io.Media.Track.to_jv track; stream |]
     |> RtpSender.of_jv
 
-  let close t = Jv.call t "close" |> ignore
+  let close t = Jv.call t "close" [||] |> ignore
 
   type offer = Jv.t
 
@@ -533,7 +550,7 @@ module PeerConnection = struct
 
   let get_stats ?selector t =
     let selector =
-      Jv.of_option ~none:Jv.undefined Media.StreamTrack.to_jv selector
+      Jv.of_option ~none:Jv.undefined Brr_io.Media.Track.to_jv selector
     in
     Jv.call t "getStats" [| selector |] |> Fut.of_promise ~ok:StatsReport.of_jv
 

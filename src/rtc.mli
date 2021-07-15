@@ -105,7 +105,7 @@ module RtpSender : sig
       {{:https://developer.mozilla.org/en-US/docs/Web/API/RTCDTMFSender} the
       object}. *)
 
-  val get_track : t -> Media.StreamTrack.t option
+  val get_track : t -> Brr_io.Media.Track.t option
   (** The {!Media.StreamTrack} being handled bu this RTP sender. *)
 
   val get_transport : t -> DtlsTransport.t option
@@ -456,6 +456,22 @@ module PeerConnection : sig
       val candidate : t -> IceCandidate.t
     end
 
+    val icecandidate : Ice.t Ev.type'
+
+    module Track : sig
+      type t
+
+      val receiver : t -> RtpReceiver.t
+
+      val streams : t -> Brr_io.Media.Stream.t array
+
+      val track : t -> Brr_io.Media.Track.t
+
+      val transceiver : t -> RtpTransceiver.t
+    end
+
+    val track : Track.t Ev.type'
+
     val set_on_ice_candidate : (Ice.t Ev.t -> 'a) -> t -> unit
 
     module DataChannel : sig
@@ -482,8 +498,8 @@ module PeerConnection : sig
       have been sent. *)
 
   val add_track :
-    ?stream:Media.Stream.t ->
-    track:Media.StreamTrack.t ->
+    ?stream:Brr_io.Media.Stream.t ->
+    track:Brr_io.Media.Track.t ->
     connection:t ->
     unit ->
     RtpSender.t
@@ -526,7 +542,7 @@ module PeerConnection : sig
   end
 
   val get_stats :
-    ?selector:Media.StreamTrack.t -> t -> StatsReport.t Fut.or_error
+    ?selector:Brr_io.Media.Track.t -> t -> StatsReport.t Fut.or_error
   (** [get_stats t] will returns the stats for the whole connection *)
 
   val get_transceivers : t -> RtpTransceiver.t array
