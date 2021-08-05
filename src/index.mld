@@ -1,5 +1,15 @@
 {1 Js_of_ocaml Bingings for WebRTC Web API}
 
-This library provides bindings to the WebRTC Web API
+This library provides bindings to the WebRTC Web API... they're not complete nor 
+are they well documented. But they're enough to build some cool little web apps.
 
- - {! Rtc.PeerConnection} contains the code for working with RTC peer connections 
+ - {! Rtc.PeerConnection} contains the code for working with RTC peer connections.
+ - {! Rtc.DataChannel} for representing a network channel which can be used
+    for bidirectional peer-to-peer transfer of data.
+
+{2 Examples}
+
+ - The {{:/jsoo-rtc/simple-data-channel} simple data channel} example allows two compontents on the 
+ page to commutate using an {! Rtc.DataChannel}
+ - The {{:/jsoo-rtc/simple-video-call} simple video call} example sets up a call between you and... yourself!
+ Beware of audio feedback!
