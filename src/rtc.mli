@@ -190,7 +190,7 @@ end
 
 module DataChannel : sig
   type t
-  (** A certificate used by the connection for authentication *)
+  (** A data channel *)
 
   include Jv.CONV with type t := t
 
