@@ -10,6 +10,6 @@ are they well documented. But they're enough to build some cool little web apps.
 {2 Examples}
 
  - The {{:/jsoo-rtc/simple-data-channel} simple data channel} example allows two compontents on the 
- page to commutate using an {! Rtc.DataChannel}
+ page to communicate using an {! Rtc.DataChannel}.
  - The {{:/jsoo-rtc/simple-video-call} simple video call} example sets up a call between you and... yourself!
  Beware of audio feedback!
