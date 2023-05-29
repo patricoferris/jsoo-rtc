@@ -467,7 +467,8 @@ module PeerConnection = struct
 
     let icecandidate : Ice.t Ev.type' = Ev.Type.create (Jstr.v "icecandidate")
 
-    let set_on_ice_candidate f t = Jv.set t "onicecandidate" (Jv.repr f)
+    let set_on_ice_candidate f t =
+      Ev.listen icecandidate f (Ev.target_of_jv t)
 
     module Track = struct
       type t = Jv.t

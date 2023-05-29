@@ -345,6 +345,8 @@ module PeerConnection : sig
     type t
     (** Session description object *)
 
+    include Jv.CONV with type t := t
+
     val get_type : t -> [ `Answer | `Offer | `Pranswer | `Rollback ]
 
     val get_sdp : t -> Jstr.t
@@ -472,7 +474,7 @@ module PeerConnection : sig
 
     val track : Track.t Ev.type'
 
-    val set_on_ice_candidate : (Ice.t Ev.t -> 'a) -> t -> unit
+    val set_on_ice_candidate : (Ice.t Ev.t -> unit) -> t -> Ev.listener
 
     module DataChannel : sig
       type t
